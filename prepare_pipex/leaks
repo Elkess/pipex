@@ -1,0 +1,5 @@
+void leaks()
+{
+	system("leaks so_long");
+	system("lsof -c so_long");
+}

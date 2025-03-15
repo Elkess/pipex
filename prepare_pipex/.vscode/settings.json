@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "fcntl.h": "c",
+        "unistd.h": "c",
+        "string.h": "c",
+        "stdio.h": "c",
+        "__locale": "c",
+        "locale": "c"
+    }
+}
