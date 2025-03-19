@@ -5,89 +5,96 @@
 /*                                                    +:+ +:+         +:+     */
 /*   By: melkess <melkess@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/03/15 08:39:37 by melkess           #+#    #+#             */
-/*   Updated: 2025/03/15 09:38:01 by melkess          ###   ########.fr       */
+/*   Created: 2025/03/19 11:40:38 by melkess           #+#    #+#             */
+/*   Updated: 2025/03/19 11:51:40 by melkess          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
-void	print_err(char *msg, t_pipex pipex, int flag)
+static void	exec_helper(char **paths, char **cmd, char **env, t_pipex pipex)
 {
-	if (flag)
-	{
-		free_double(pipex.paths);
-		free_double(pipex.cmd1);
-		free_double(pipex.cmd2);
-	}
-	perror(msg);
-	exit(1);
-}
-
-static int	ft_nbr_words(const char *s, char c)
-{
-	int	i;
-	int	n;
+	size_t	i;
+	char	*tmp;
 
 	i = 0;
-	n = 0;
-	if (s[0] != c && s[0] != '\0')
-		n++;
-	while (s[i])
+	while (paths[i])
 	{
-		if ((s[i] == c && s[i +1] != c && s[i +1] != '\0'))
-			n++;
+		tmp = paths[i];
+		paths[i] = ft_strjoin(paths[i], "/");
+		free(tmp);
+		tmp = paths[i];
+		paths[i] = ft_strjoin(paths[i], cmd[0]);
+		free(tmp);
+		if (!access(paths[i], X_OK) && cmd[0])
+			if (execve(paths[i], cmd, env) == -1)
+				print_err("Execve failed !", pipex, 1);
 		i++;
 	}
-	return (n);
-}
-
-static char	*ft_one_word(char *s, char c, int *i)
-{
-	int	start;
-	int	end;
-
-	while (s[*i] && s[*i] == c)
-		(*i)++;
-	start = *i;
-	while (s[*i] && s[*i] != c)
-		(*i)++;
-	end = *i;
-	return (ft_substr(s, start, end - start));
-}
-
-static void	ft_free_splitedstr(char **splitedstr, int j)
-{
-	while (j > 0)
-		free(splitedstr[--j]);
-	free(splitedstr);
-}
-
-char	**ft_split(char *s, char c)
-{
-	char	**splitedstr;
-	int		nbrwords;
-	int		i;
-	int		j;
-
-	if (!s)
-		return (NULL);
-	nbrwords = ft_nbr_words(s, c);
-	splitedstr = (char **) malloc((nbrwords +1) * sizeof(char *));
-	if (!splitedstr)
-		return (NULL);
-	i = 0;
-	j = 0;
-	while (s[i] && j < nbrwords)
+	if (paths[i] == NULL)
 	{
-		splitedstr[j] = ft_one_word(s, c, &i);
-		if (!splitedstr[j])
-		{
-			(ft_free_splitedstr(splitedstr, j));
-			return (NULL);
-		}
-		j++;
+		write(2, cmd[0], ft_strlen(cmd[0]));
+		write(2, " : command not found\n", 21);
 	}
-	(splitedstr[j] = NULL);
-	return (splitedstr);
+}
+
+static void	execute_first_child(char **env, t_pipex pipex, int *pipefd)
+{
+	int		fd;
+
+	close(pipefd[0]);
+	fd = open(pipex.infile, O_RDONLY);
+	if (fd == -1)
+		(close(pipefd[1]), print_err("Failed to open file", pipex, 1));
+	if (dup2(fd, 0) == -1 || dup2(pipefd[1], 1) == -1)
+		(close(pipefd[1]), close(fd), print_err("dup2 failed", pipex, 1));
+	(close(fd), close(pipefd[1]));
+	if (!access(pipex.cmd1[0], X_OK) || !pipex.paths)
+	{
+		if (execve(pipex.cmd1[0], pipex.cmd1, env) == -1)
+			print_err("Execve failed !", pipex, 1);
+	}
+	else
+		exec_helper(pipex.paths, pipex.cmd1, env, pipex);
+}
+
+static void	execute_sec_child(char **env, t_pipex pipex, int *pipefd)
+{
+	int		fd;
+
+	close(pipefd[1]);
+	fd = open(pipex.outfile, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd == -1)
+		(close(pipefd[0]), print_err("Failed to open file", pipex, 1));
+	if (dup2(pipefd[0], 0) || dup2(fd, 1) == -1)
+		(close(pipefd[0]), close(fd), print_err("dup2 failed", pipex, 1));
+	(close(pipefd[0]), close(fd));
+	if (!access(pipex.cmd2[0], X_OK) || !pipex.paths)
+	{
+		if (execve(pipex.cmd2[0], pipex.cmd2, env) == -1)
+			print_err("Execve failed !", pipex, 1);
+	}
+	else
+		exec_helper(pipex.paths, pipex.cmd2, env, pipex);
+}
+
+void	forking_executing(char **env, t_pipex pipex, int *pipefd, int *forkids)
+{
+	forkids[0] = fork();
+	if (forkids[0] == -1)
+	{
+		(close(pipefd[0]), close(pipefd[1]));
+		print_err("fork func failes !!", pipex, 1);
+	}
+	if (forkids[0] == 0)
+		(execute_first_child(env, pipex, pipefd), exit(1));
+	forkids[1] = fork();
+	if (forkids[1] == -1)
+	{
+		(close(pipefd[0]), close(pipefd[1]));
+		print_err("fork func failes !!", pipex, 1);
+	}
+	if (forkids[1] == 0)
+		execute_sec_child(env, pipex, pipefd);
+	(close(pipefd[0]), close(pipefd[1]));
 }

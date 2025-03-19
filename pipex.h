@@ -6,7 +6,7 @@
 /*   By: melkess <melkess@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/15 08:32:32 by melkess           #+#    #+#             */
-/*   Updated: 2025/03/15 09:38:53 by melkess          ###   ########.fr       */
+/*   Updated: 2025/03/19 11:53:08 by melkess          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,11 +28,12 @@ typedef struct s_pipex
 
 }	t_pipex;
 
+void	forking_executing(char **env, t_pipex pipex, int *pipefd, int *forkids);
 void	print_err(char *msg, t_pipex pipex, int flag);
 size_t	ft_strlen(const char *s);
 char	*ft_strjoin(char const *s1, char const *s2);
 char	*ft_substr(char const *s, unsigned int start, size_t len);
-char	**ft_split(char *s, char c);
+char	**ft_split(char *s, char c, int i, int j);
 void	free_double(char **d);
 
 #endif
