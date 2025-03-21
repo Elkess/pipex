@@ -6,20 +6,26 @@
 /*   By: melkess <melkess@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/15 08:39:45 by melkess           #+#    #+#             */
-/*   Updated: 2025/03/15 09:37:40 by melkess          ###   ########.fr       */
+/*   Updated: 2025/03/21 17:32:11 by melkess          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
-void	free_double(char **d)
+char	*ft_strchr(const char *s, int c)
 {
-	size_t	i;
+	int	i;
 
 	i = 0;
-	while (d && d[i])
-		free(d[i]);
-	free(d);
+	while (s && s[i] != '\0')
+	{
+		if (s[i] == (char) c)
+			return ((char *)(s + i));
+		i++;
+	}
+	if (s && (char) c == '\0')
+		return ((char *)(s + i));
+	return (NULL);
 }
 
 size_t	ft_strlen(const char *s)
@@ -32,7 +38,7 @@ size_t	ft_strlen(const char *s)
 	return (i);
 }
 
-static char	*ft_strdup(const char *s1)
+char	*ft_strdup(const char *s1)
 {
 	char	*s;
 	size_t	i;

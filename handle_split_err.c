@@ -6,7 +6,7 @@
 /*   By: melkess <melkess@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/15 08:39:37 by melkess           #+#    #+#             */
-/*   Updated: 2025/03/19 11:47:56 by melkess          ###   ########.fr       */
+/*   Updated: 2025/03/21 17:52:58 by melkess          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,6 @@
 
 void	print_err(char *msg, t_pipex pipex, int flag)
 {
-	flag = 0;
 	if (flag)
 	{
 		free_double(pipex.paths);
@@ -67,7 +66,6 @@ static void	ft_free_splitedstr(char **splitedstr, int j)
 char	**ft_split(char *s, char c, int i, int j)
 {
 	char	**splitedstr;
-	char	*tmp;
 	int		nbrwords;
 
 	if (!s)
@@ -75,7 +73,7 @@ char	**ft_split(char *s, char c, int i, int j)
 	nbrwords = ft_nbr_words(s, c);
 	splitedstr = (char **) malloc((nbrwords +1) * sizeof(char *));
 	if (!splitedstr)
-		return (NULL);
+		return (free(s), NULL);
 	i = 0;
 	j = 0;
 	while (s[i] && j < nbrwords)
@@ -83,12 +81,7 @@ char	**ft_split(char *s, char c, int i, int j)
 		splitedstr[j] = ft_one_word(s, c, &i);
 		if (!splitedstr[j])
 			return (ft_free_splitedstr(splitedstr, j), NULL);
-		if (++j != nbrwords)
-		{
-			tmp = splitedstr[j];
-			splitedstr[j] = ft_strjoin(splitedstr[j], "/");
-			free(tmp);
-		}
+		j++;
 	}
 	return (splitedstr[j] = NULL, splitedstr);
 }

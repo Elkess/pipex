@@ -6,23 +6,22 @@
 /*   By: melkess <melkess@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/15 01:42:43 by melkess           #+#    #+#             */
-/*   Updated: 2025/03/19 11:54:14 by melkess          ###   ########.fr       */
+/*   Updated: 2025/03/21 18:15:48 by melkess          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "pipex.h"
 
-static char	**extract_env_path(char **env, t_pipex pipex)
+static char	**extract_env_path(char **env)
 {
 	size_t	i;
-	size_t	x;
-	size_t	y;
 	size_t	len;
 	char	*paths;
+	char	**splited;
 
+	if (!env || !*env)
+		return (ft_split(ft_strdup("."), ':', 0, 0));
 	i = 0;
-	x = 0;
-	y = 0;
 	paths = NULL;
 	while (env && env[i])
 	{
@@ -35,7 +34,11 @@ static char	**extract_env_path(char **env, t_pipex pipex)
 		}
 		i++;
 	}
-	return (ft_split(paths, ':', x, y));
+	if (!*paths)
+		paths = ft_strdup(".");
+	splited = ft_split(paths, ':', 0, 0);
+	free(paths);
+	return (splited);
 }
 
 static void	fill_pipex(t_pipex *pipex, char **av)
@@ -48,6 +51,8 @@ static void	fill_pipex(t_pipex *pipex, char **av)
 	x = 0;
 	y = 0;
 	pipex->infile = av[1];
+	pipex->cmd1 = NULL;
+	pipex->cmd2 = NULL;
 	pipex->cmd1 = ft_split(av[2], ' ', x, y);
 	if (!pipex->cmd1)
 		print_err("filling cmd1 failed", *pipex, 1);
@@ -57,51 +62,48 @@ static void	fill_pipex(t_pipex *pipex, char **av)
 	pipex->outfile = av[4];
 }
 
-static void	ft_double_duptwo(int *io, int *pipefd, t_pipex pipex, int flag)
+void	ft_dup(int *io, t_pipex pipex, int flag, int fd)
 {
 	if (flag)
 	{
-		if (dup2(0, io[0]) == -1 || dup2(1, io[1]) == -1)
+		io[0] = dup(0);
+		io[1] = dup(1);
+		if (io[0] == -1 || io[1] == -1)
 		{
-			(close(pipefd[0]), close(pipefd[1]));
-			print_err("dup2 inbackup failed !!", pipex, 1);
+			close(fd);
+			(close(pipex.pipefd[0]), close(pipex.pipefd[1]));
+			(close(io[0]), close(io[1]));
+			print_err("dup2 pre backup failed !!", pipex, 1);
 		}
 	}
 	else
 	{
 		if (dup2(io[0], 0) == -1 || dup2(io[1], 1) == -1)
 		{
-			(close(pipefd[0]), close(pipefd[1]));
+			(close(io[0]), close(io[1]));
 			print_err("dup2 in backup failed !!", pipex, 1);
 		}
+		(close(io[0]), close(io[1]));
 	}
 }
-
-// void	leaks(void)
-// {
-// 	system("leaks pipex");
-// 	system("lsof -c pipex");
-// }
 
 int	main(int ac, char **av, char **env)
 {
 	t_pipex	pipex;
-	int		pipefd[2];
-	int		iobackup[2];
-	int		forkids[2];
+	int		fork_ids[2];
 	int		status;
 
-	// atexit(leaks);
-	pipex.paths = NULL;
+	pipex.cmd1 = NULL;
 	if (ac != 5 || !av[1][0] || !av[4][0])
 		print_err("./pipex file1 cmd1 cmd2 file2", pipex, 0);
-	pipex.paths = extract_env_path(env, pipex);
+	pipex.paths = extract_env_path(env);
 	fill_pipex(&pipex, av);
-	if (pipe(pipefd) == -1 || pipe(iobackup) == -1)
+	if (pipe(pipex.pipefd) == -1)
 		print_err("pipe func failed !!", pipex, 1);
-	ft_double_duptwo(iobackup, pipefd, pipex, 1);
-	forking_executing(env, pipex, pipefd, forkids);
-	(waitpid(forkids[0], NULL, 0), waitpid(forkids[1], &status, 0));
-	ft_double_duptwo(iobackup, pipefd, pipex, 0);
+	forking_executing(env, pipex, fork_ids);
+	(waitpid(fork_ids[0], NULL, 0), waitpid(fork_ids[1], &status, 0));
+	free_double(pipex.cmd1);
+	free_double(pipex.cmd2);
+	free_double(pipex.paths);
 	return (WEXITSTATUS(status));
 }
